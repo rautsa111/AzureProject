@@ -144,7 +144,7 @@
 				"userProperties": [],
 				"typeProperties": {
 					"expression": {
-						"value": "@greater(activity('Copy_Data_From_SQL').output, 0)",
+						"value": "@greater(activity('Copy_Data_From_SQL').output.dataRead, 0)",
 						"type": "Expression"
 					},
 					"ifFalseActivities": [
