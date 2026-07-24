@@ -70,7 +70,7 @@
 							"container": "bronze",
 							"folder": "DimDate",
 							"file": {
-								"value": "@concat(pipeline().parameters.table, '_', utcNow())",
+								"value": "@concat(pipeline().parameters.table, '_', variables('current'))",
 								"type": "Expression"
 							}
 						}
@@ -170,7 +170,10 @@
 											"value": "@pipeline().parameters.table",
 											"type": "Expression"
 										},
-										"file": "@concat(pipeline().parameters.table, '_', utcNow())"
+										"file": {
+											"value": "@concat(pipeline().parameters.table, '_', variables('current'))",
+											"type": "Expression"
+										}
 									}
 								},
 								"enableLogging": false,
