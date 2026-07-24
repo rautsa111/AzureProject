@@ -25,7 +25,7 @@
 					"source": {
 						"type": "AzureSqlSource",
 						"sqlReaderQuery": {
-							"value": "SELECT * FROM @{pipeline().parameters.schema}.@{pipeline().parameters.table} WHERE @{activity('Lookup_Last_CDC').output.value[0].cdc}",
+							"value": "SELECT * FROM @{pipeline().parameters.schema}.@{pipeline().parameters.table} WHERE @{pipeline().parameters.date} > @{activity('Lookup_Last_CDC').output.value[0].cdc}",
 							"type": "Expression"
 						},
 						"queryTimeout": "02:00:00",
@@ -117,6 +117,9 @@
 				"type": "string"
 			},
 			"table": {
+				"type": "string"
+			},
+			"date": {
 				"type": "string"
 			}
 		},
