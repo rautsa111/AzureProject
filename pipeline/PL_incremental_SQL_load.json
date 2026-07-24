@@ -54,8 +54,12 @@
 						"referenceName": "Parquet",
 						"type": "DatasetReference",
 						"parameters": {
-							"container": "azureprojectspotifyy",
-							"folder": "bronze"
+							"container": "bronze",
+							"folder": "DimDate",
+							"file": {
+								"value": "@utcNow()",
+								"type": "Expression"
+							}
 						}
 					}
 				]
