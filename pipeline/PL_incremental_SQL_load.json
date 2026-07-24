@@ -42,13 +42,21 @@
 				"inputs": [
 					{
 						"referenceName": "AzureSqlTable",
-						"type": "DatasetReference"
+						"type": "DatasetReference",
+						"parameters": {
+							"schema": "dbo",
+							"table": "DimDate"
+						}
 					}
 				],
 				"outputs": [
 					{
 						"referenceName": "Parquet",
-						"type": "DatasetReference"
+						"type": "DatasetReference",
+						"parameters": {
+							"container": "azureprojectspotifyy",
+							"folder": "bronze"
+						}
 					}
 				]
 			}
