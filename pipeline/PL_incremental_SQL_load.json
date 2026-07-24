@@ -11,6 +11,12 @@
 						"dependencyConditions": [
 							"Succeeded"
 						]
+					},
+					{
+						"activity": "Current",
+						"dependencyConditions": [
+							"Succeeded"
+						]
 					}
 				],
 				"policy": {
@@ -25,7 +31,7 @@
 					"source": {
 						"type": "AzureSqlSource",
 						"sqlReaderQuery": {
-							"value": "SELECT * FROM @{pipeline().parameters.schema}.@{pipeline().parameters.table} WHERE @{pipeline().parameters.cdc_column} > '@(activity('Lookup_Last_CDC').output.value[0].cdc)'",
+							"value": "SELECT * FROM @{pipeline().parameters.schema}.@{pipeline().parameters.table} WHERE @{pipeline().parameters.cdc_column} > '@{activity('Lookup_Last_CDC').output.value[0].cdc}'",
 							"type": "Expression"
 						},
 						"queryTimeout": "02:00:00",
@@ -64,7 +70,7 @@
 							"container": "bronze",
 							"folder": "DimDate",
 							"file": {
-								"value": "@utcNow()",
+								"value": "@concat('@{pipeline().parameters.table}', '_', '@utc_now()' )",
 								"type": "Expression"
 							}
 						}
@@ -100,11 +106,28 @@
 						"type": "DatasetReference",
 						"parameters": {
 							"container": "bronze",
-							"folder": "Dimuser_cdc",
+							"folder": "DimDate_cdc",
 							"file": "cdc.json"
 						}
 					},
 					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "Current",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "current",
+					"value": {
+						"value": "@utcNow()",
+						"type": "Expression"
+					}
 				}
 			}
 		],
@@ -117,6 +140,11 @@
 			},
 			"cdc_column": {
 				"type": "string"
+			}
+		},
+		"variables": {
+			"current": {
+				"type": "String"
 			}
 		},
 		"annotations": []
