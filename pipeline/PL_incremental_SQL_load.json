@@ -97,8 +97,14 @@
 					},
 					"dataset": {
 						"referenceName": "Json",
-						"type": "DatasetReference"
-					}
+						"type": "DatasetReference",
+						"parameters": {
+							"container": "bronze",
+							"folder": "Dimuser_cdc",
+							"file": "cdc.json"
+						}
+					},
+					"firstRowOnly": false
 				}
 			}
 		],
