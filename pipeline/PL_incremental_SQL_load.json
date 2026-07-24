@@ -70,7 +70,7 @@
 							"container": "bronze",
 							"folder": "DimDate",
 							"file": {
-								"value": "@concat('@{pipeline().parameters.table}', '_', '@utc_now()' )",
+								"value": "@concat(pipeline().parameters.table, '_', utcNow())",
 								"type": "Expression"
 							}
 						}
@@ -128,6 +128,42 @@
 						"value": "@utcNow()",
 						"type": "Expression"
 					}
+				}
+			},
+			{
+				"name": "Max_CDC",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "Copy_Data_From_SQL",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": {
+								"value": "SELECT MAX(pipeline().parameters.cdc_column) FROM pipeline().parameters.schema.pipeline().parameters.table",
+								"type": "Expression"
+							}
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
 				}
 			}
 		],
