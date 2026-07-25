@@ -1,42 +1,55 @@
-# AzureProject
-
-# Azure Data Factory - Incremental SQL to ADLS Data Pipeline
+# Azure Data Factory - Metadata-Driven Incremental & Backdated SQL Data Pipeline
 
 ## Project Overview
 
-This project implements an **incremental data ingestion pipeline** using **Azure Data Factory (ADF)**. The pipeline extracts only newly inserted or updated records from Azure SQL Database based on a Change Data Capture (CDC) column and stores the data as **Parquet files** in Azure Data Lake Storage Gen2 (ADLS).
+This project demonstrates a **metadata-driven Azure Data Factory (ADF) pipeline** that performs **incremental data ingestion** from Azure SQL Database into Azure Data Lake Storage Gen2 (ADLS Gen2).
 
-The pipeline is designed to process multiple tables dynamically using a `ForEach` loop.
+The pipeline dynamically processes multiple tables using a **ForEach** activity and supports both:
+
+- **Incremental Loads** using Change Data Capture (CDC) columns
+- **Backdated Refreshes** using a configurable `from_date` parameter
+
+Data is stored in the **Bronze layer** in **Parquet** format, while the latest processed CDC value is maintained in JSON metadata files.
 
 ---
 
-## Architecture
+# Solution Architecture
 
 ```
-Azure SQL Database
-        │
-        ▼
-Lookup Last CDC Value
-        │
-        ▼
-ForEach (Each Table)
-        │
-        ├── Copy Incremental Data
-        │
-        ├── Check Records Copied
-        │        │
-        │        ├── No Records
-        │        │      └── Delete Empty File
-        │        │
-        │        └── Records Found
-        │               ├── Get MAX(CDC)
-        │               └── Update CDC Metadata
-        │
-        ▼
-Azure Data Lake Storage Gen2 (Bronze Layer)
-        │
-        ▼
-Logic App Notification
+                    Azure SQL Database
+                            │
+                            │
+                    Metadata (file_loop)
+                            │
+                            ▼
+                  ForEach (Dynamic Tables)
+                            │
+        ┌───────────────────┴────────────────────┐
+        │                                        │
+        ▼                                        ▼
+Lookup Last CDC                        Use from_date (Optional)
+        │                                        │
+        └───────────────┬────────────────────────┘
+                        ▼
+              Determine Start Timestamp
+                        │
+                        ▼
+             Copy Incremental Records
+                        │
+                        ▼
+        Write Parquet Files to ADLS Gen2
+                        │
+         ┌──────────────┴──────────────┐
+         │                             │
+         ▼                             ▼
+No Records Copied             Records Copied
+Delete Empty File             Get MAX(CDC)
+                                     │
+                                     ▼
+                           Update cdc.json
+                                     │
+                                     ▼
+                         Logic App Notification
 ```
 
 ---
@@ -47,28 +60,30 @@ Logic App Notification
 - Azure SQL Database
 - Azure Data Lake Storage Gen2
 - Azure Blob Storage
-- Parquet Format
-- JSON Metadata
 - Azure Logic Apps
+- Parquet
+- JSON Metadata
 
 ---
 
 # Features
 
-- Incremental loading using CDC timestamp columns
-- Dynamic table processing with ForEach activity
 - Metadata-driven pipeline
-- Automatic CDC value management
-- Stores data in Parquet format
-- Deletes empty output files
-- Sends execution alerts through Logic App
-- Easily scalable by adding tables to the parameter list
+- Dynamic processing of multiple SQL tables
+- Incremental loading using CDC timestamp columns
+- Backdated refresh using `from_date`
+- Automatic CDC tracking
+- Dynamic SQL query generation
+- Parquet output format
+- Empty file cleanup
+- Logic App notifications
+- Easily scalable by adding new table metadata
 
 ---
 
-# Pipeline Parameters
+# Metadata Configuration
 
-The pipeline uses a single parameter named `file_loop`.
+The pipeline uses a parameter named **file_loop**.
 
 ```json
 [
@@ -100,120 +115,179 @@ The pipeline uses a single parameter named `file_loop`.
     "schema": "dbo",
     "table": "FactStream",
     "cdc_col": "stream_timestamp",
-    "from_date": ""
+    "from_date": "2026-01-01 00:00:00"
   }
 ]
 ```
 
-Each object contains:
+## Metadata Fields
 
-| Property | Description |
-|----------|-------------|
+| Field | Description |
+|--------|-------------|
 | schema | SQL schema name |
 | table | Source table |
-| cdc_col | Incremental column |
-| from_date | Optional override date |
+| cdc_col | Incremental timestamp column |
+| from_date | Optional backdated refresh date |
+
+---
+
+# Loading Modes
+
+## 1. Incremental Load
+
+When `from_date` is empty, the pipeline reads the latest processed timestamp from:
+
+```
+bronze/
+   <table>_cdc/
+      cdc.json
+```
+
+Example:
+
+```json
+{
+    "cdc":"2026-07-24T10:15:30"
+}
+```
+
+The pipeline generates a query similar to:
+
+```sql
+SELECT *
+FROM dbo.DimUser
+WHERE updated_at > '2026-07-24T10:15:30'
+```
+
+Only newly inserted or updated records are copied.
+
+---
+
+## 2. Backdated Refresh
+
+When a value is supplied in `from_date`, the pipeline ignores the stored CDC value.
+
+Example:
+
+```json
+{
+    "table":"FactStream",
+    "from_date":"2026-01-01 00:00:00"
+}
+```
+
+Generated SQL:
+
+```sql
+SELECT *
+FROM dbo.FactStream
+WHERE stream_timestamp > '2026-01-01 00:00:00'
+```
+
+This enables selective historical reprocessing without performing a full refresh.
+
+### Backdated Refresh Use Cases
+
+- Reload historical data
+- Recover missed records
+- Reprocess corrected source data
+- Data quality fixes
+- Partial historical backfills
 
 ---
 
 # Pipeline Workflow
 
-## Step 1
+### Step 1
 
-Loop through every table using a **ForEach** activity.
+Loop through each table using the metadata parameter.
 
----
+↓
 
-## Step 2
+### Step 2
 
-Read the latest processed CDC timestamp from:
+Determine the extraction start timestamp.
 
 ```
-bronze/
-    <table>_cdc/
-        cdc.json
+IF from_date is provided
+      Use from_date
+ELSE
+      Read latest CDC from cdc.json
 ```
 
----
+↓
 
-## Step 3
+### Step 3
 
-Run an incremental SQL query.
+Execute incremental SQL query.
+
+↓
+
+### Step 4
+
+Write records into ADLS Gen2 in Parquet format.
 
 Example:
 
-```sql
-SELECT *
-FROM dbo.DimUser
-WHERE updated_at >
-'Last_CDC_Value'
-```
-
----
-
-## Step 4
-
-Write the incremental records into ADLS Gen2 as Parquet.
-
 ```
 bronze/
-    DimUser/
-        DimUser_2026-07-24T08:30:00.parquet
+   DimUser/
+      DimUser_2026-07-24T11-20-00.parquet
 ```
 
----
+↓
 
-## Step 5
+### Step 5
 
-If no records are copied:
+If no rows are copied
 
-- Delete the empty Parquet file.
+- Delete empty output file
 
----
+↓
 
-## Step 6
+### Step 6
 
-If records exist:
+If records are copied
 
-Run
+Execute:
 
 ```sql
 SELECT MAX(updated_at)
 FROM dbo.DimUser
 ```
 
----
+↓
 
-## Step 7
+### Step 7
 
-Update
+Update CDC metadata.
+
+Example:
 
 ```
 bronze/
-    DimUser_cdc/
-        cdc.json
+   DimUser_cdc/
+      cdc.json
 ```
-
-Example
 
 ```json
 {
-    "cdc":"2026-07-24T12:45:19"
+    "cdc":"2026-07-24T11:45:12"
 }
 ```
 
----
+↓
 
-## Step 8
+### Step 8
 
-After the pipeline finishes, send a notification using Azure Logic Apps.
+Trigger Azure Logic App notification after pipeline completion.
 
 ---
 
 # Project Structure
 
 ```
-ADF-Incremental-Load/
+ADF-Incremental-SQL-Load
 │
 ├── pipeline/
 │   └── PL_Incremental_SQL_Load_Loop.json
@@ -225,42 +299,43 @@ ADF-Incremental-Load/
 │
 ├── linkedServices/
 │   ├── AzureSqlDatabase.json
-│   └── ADLS.json
-│
-├── triggers/
+│   └── AzureDataLakeStorage.json
 │
 ├── images/
+│   ├── architecture.png
 │   ├── pipeline.png
-│   └── architecture.png
+│   └── workflow.png
 │
 └── README.md
 ```
 
 ---
 
-# Output Folder Structure
+# Output Structure
 
 ```
 bronze/
 
-│
 ├── DimUser/
-│      DimUser_2026-07-24.parquet
+│     DimUser_2026-07-24.parquet
 │
 ├── DimArtist/
-│      DimArtist_2026-07-24.parquet
+│     DimArtist_2026-07-24.parquet
+│
+├── DimTrack/
+│     DimTrack_2026-07-24.parquet
 │
 ├── FactStream/
-│      FactStream_2026-07-24.parquet
+│     FactStream_2026-07-24.parquet
 │
 ├── DimUser_cdc/
-│      cdc.json
+│     cdc.json
 │
 ├── DimArtist_cdc/
-│      cdc.json
+│     cdc.json
 │
 └── FactStream_cdc/
-       cdc.json
+      cdc.json
 ```
 
 ---
@@ -268,32 +343,27 @@ bronze/
 # Advantages
 
 - Metadata-driven design
-- Reusable for multiple tables
-- Minimal code changes for new tables
-- Faster incremental loads
-- Reduced SQL load
-- Lower storage costs
-- Easy maintenance
+- Supports multiple tables
+- No hardcoded SQL queries
+- Incremental loading for better performance
+- Backdated refresh capability
+- Reduced data movement
+- Lower storage and compute costs
+- Easily extensible
+- Production-ready architecture
 
 ---
 
-# Future Improvements
 
-- Parallel table execution
-- Watermark table instead of JSON files
-- Retry mechanism
-- Logging to Azure Monitor
-- Dynamic sink partitioning
-- Data quality validation
-- Integration with Azure Key Vault
-
----
 
 # Author
 
 **Sayali Raut**
 
-Azure Data Engineer
+Azure Data Engineer | Azure Data Factory | Azure SQL | Azure Data Lake | ETL | Data Engineering
 
 ---
 
+# License
+
+This project is licensed under the MIT License.
