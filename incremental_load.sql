@@ -1,3 +1,13 @@
+--Before inserting new recored you will need to drop the constraint
+SELECT name 
+FROM sys.key_constraints
+WHERE type = 'PK' AND parent_object_id = object_id('DimUser')
+
+--PK__DimUser__B9BE370FCEDB40CF
+
+ALTER TABLE  [dbo].[DimUser] DROP constraint PK__DimUser__B9BE370FCEDB40CF
+
+
 -- DimUser
 INSERT INTO DimUser (user_id, user_name, country, subscription_type, start_date, end_date, updated_at) VALUES (1, 'Justin Gonzalez', 'Equatorial Guinea', 'Free', '2024-01-11', NULL, '2025-09-14 19:49:56');
 INSERT INTO DimUser (user_id, user_name, country, subscription_type, start_date, end_date, updated_at) VALUES (2, 'Maria Lowe', 'Australia', 'Family', '2025-04-12', NULL, '2025-09-23 19:49:56');
