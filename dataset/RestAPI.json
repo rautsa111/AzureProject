@@ -7,6 +7,12 @@
 		},
 		"annotations": [],
 		"type": "RestResource",
+		"typeProperties": {
+			"relativeUrl": {
+				"value": "?offset=20",
+				"type": "Expression"
+			}
+		},
 		"schema": []
 	}
 }

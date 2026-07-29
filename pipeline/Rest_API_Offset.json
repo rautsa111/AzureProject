@@ -1,0 +1,86 @@
+{
+	"name": "Rest_API_Offset",
+	"properties": {
+		"activities": [
+			{
+				"name": "End_Point",
+				"type": "WebActivity",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "GET",
+					"url": " https://pokeapi.co/api/v2/pokemon/"
+				}
+			},
+			{
+				"name": "Copy_All_Data",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "End_Point",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "RestSource",
+						"httpRequestTimeout": "00:01:40",
+						"requestInterval": "00.00:00:00.010",
+						"requestMethod": "GET",
+						"paginationRules": {
+							"QueryParameters": {
+								"value": "RANGE:0:@{activity('End_Point').output.count}:20",
+								"type": "Expression"
+							}
+						}
+					},
+					"sink": {
+						"type": "JsonSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "JsonWriteSettings"
+						}
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "RestAPI",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "Json",
+						"type": "DatasetReference",
+						"parameters": {
+							"container": "sink",
+							"folder": "RestAPI",
+							"file": "pockemon.json"
+						}
+					}
+				]
+			}
+		],
+		"annotations": []
+	}
+}
