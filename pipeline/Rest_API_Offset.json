@@ -45,7 +45,7 @@
 						"requestInterval": "00.00:00:00.010",
 						"requestMethod": "GET",
 						"paginationRules": {
-							"QueryParameters": {
+							"QueryParameters.offset": {
 								"value": "RANGE:0:@{activity('End_Point').output.count}:20",
 								"type": "Expression"
 							}
