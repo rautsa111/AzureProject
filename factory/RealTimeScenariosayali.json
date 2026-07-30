@@ -1,0 +1,15 @@
+{
+	"name": "RealTimeScenariosayali",
+	"properties": {
+		"trustModeClaimForMi": {
+			"value": "Disabled",
+			"editable": true
+		}
+	},
+	"location": "southindia",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "37489452-4826-4d84-ae96-846c595f2547",
+		"tenantId": "192005ea-433a-4432-a845-f8d51fb6694c"
+	}
+}
